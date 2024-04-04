@@ -1,27 +1,9 @@
-### Python
-**Python Interview Questions**
-- 50 https://www.youtube.com/watch?v=eNg-z3IebwQ
-- 52 https://youtu.be/YeupGcOW-3k
-- 100 https://youtu.be/uuhi830wOzs
-
-**Django Developer Interview Questions Answers**
-- https://youtu.be/hMwGWqyIKEs
-
-**Django Middleware**
-- https://youtu.be/A4PAJDkHJfI
-- https://youtu.be/vw3yv2AVaTE
-
 ### Ansible Tutorial
 - **Rahul Wagh**
     - https://youtu.be/2hVSpENzhwA?list=PL7iMyoQPMtAPZl58ovoOlxFxNPioSx838
 
 - **Nehra Classes**
     - https://youtu.be/q8MX_ldXrt8
-    
-
-###  HashiCorp Vault Tutorial
-- **Rahul Wagh**
-    - https://youtu.be/-sU0O82fdZs?list=PL7iMyoQPMtAP7XeXabzWnNKGkCex1C_3C 
 
 ### Terraform Tutorial https://github.com/stacksimplify/terraform-on-aws-eks/tree/main
 - **Abhishek.Veeramalla**
@@ -40,7 +22,11 @@
 - **TechWorld with Nana**
     - https://youtu.be/X48VuDVv0do?list=RDCMUCdngmbVKX1Tgre699-XLlUA
 - **Rahul Wagh**
-    - https://youtu.be/DQk8HOVlumI  
+    - https://youtu.be/DQk8HOVlumI    
+
+###  HashiCorp Vault Tutorial
+- **Rahul Wagh**
+    - https://youtu.be/-sU0O82fdZs?list=PL7iMyoQPMtAP7XeXabzWnNKGkCex1C_3C 
 
 ### Helm Chart Tutorial
 - **Rahul Wagh**
@@ -67,6 +53,18 @@
 - https://youtu.be/OnK4IKgLl24
 - https://www.youtube.com/watch?v=qrTpdHD_9dE
 
+### Python
+**Python Interview Questions**
+- 50 https://www.youtube.com/watch?v=eNg-z3IebwQ
+- 52 https://youtu.be/YeupGcOW-3k
+- 100 https://youtu.be/uuhi830wOzs
+
+**Django Developer Interview Questions Answers**
+- https://youtu.be/hMwGWqyIKEs
+
+**Django Middleware**
+- https://youtu.be/A4PAJDkHJfI
+- https://youtu.be/vw3yv2AVaTE
 
 ## AWS + DevOps Tutorial
 **Linux Commands for Troubleshooting**
