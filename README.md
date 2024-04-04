@@ -68,7 +68,7 @@
 - https://www.youtube.com/watch?v=qrTpdHD_9dE
 
 
-## Mix Tutorial
+## AWS + DevOps Tutorial
 **Linux Commands for Troubleshooting**
 - https://youtu.be/BHVtBkJwP54?list=RDCMUCriA6Wuace8c-BtxlA0Rcaw
 
@@ -249,7 +249,6 @@
 **Helm in Kubernetes**
 - https://youtu.be/-ykwb1d0DXU
 - https://youtu.be/QoDqxm7ybLc
-
 
 **Kubernetes Best Practices and how to enforce them with Datree**
 - https://youtu.be/hgUfH9Ab258?list=RDCMUCdngmbVKX1Tgre699-XLlUA
