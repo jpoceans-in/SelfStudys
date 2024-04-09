@@ -1,0 +1,14 @@
+[
+  {
+    "ParameterKey": "StackExportPrefix",
+    "ParameterValue": "project-dev-t2"
+  },
+  {
+    "ParameterKey": "pEnvironment",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "pResourceName",
+    "ParameterValue": "IAMRole"
+  }
+]

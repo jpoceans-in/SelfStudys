@@ -1,0 +1,34 @@
+[
+  {
+    "ParameterKey": "StackExportPrefix",
+    "ParameterValue": "project-dev-t2"
+  },
+  {
+    "ParameterKey": "pEnvironment",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "pResourceName",
+    "ParameterValue": "AppServer1"
+  },
+  {
+    "ParameterKey": "pKeyPair",
+    "ParameterValue": "working"
+  },
+  {
+    "ParameterKey": "pTargetPort",
+    "ParameterValue": "8080"
+  },
+  {
+    "ParameterKey": "VPC",
+    "ParameterValue": "VPC"
+  },
+  {
+    "ParameterKey": "Subnets",
+    "ParameterValue": "PublicSubnets"
+  },
+  {
+    "ParameterKey": "SGInstance",
+    "ParameterValue": "AppServer1SG"
+  }
+]

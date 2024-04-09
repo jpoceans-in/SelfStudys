@@ -1,0 +1,18 @@
+[
+  {
+    "ParameterKey": "StackExportPrefix",
+    "ParameterValue": "project-dev-t2"
+  },
+  {
+    "ParameterKey": "pEnvironment",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "pDomainName",
+    "ParameterValue": "appflow.in"
+  },
+  {
+    "ParameterKey": "pPublicHostedZoneId",
+    "ParameterValue": "Z0438595YY80OFKPEZGP"
+  }
+]

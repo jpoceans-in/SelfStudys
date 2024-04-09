@@ -1,0 +1,275 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create a Instance > App2-Instance_TG
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Resource Identity"
+        Parameters:
+          - StackExportPrefix
+          - pEnvironment
+          - pResourceName
+      - Label:
+          default: "InfraStack Resource"
+        Parameters:
+          - VPC
+          - Subnet1
+          - Subnet2
+      - Label:
+          default: "Instance Configuration"
+        Parameters:
+          - pKeyPair
+          - pTargetPort
+
+Parameters:
+  StackExportPrefix:
+    Type: "String"
+    Default: "project-dev-t2"
+  pEnvironment:
+    Type: "String"
+    Default: "dev"
+  pResourceName:
+    Type: String
+    Default: "AppServer2"
+    AllowedPattern: "[A-Za-z0-9]*"
+    MaxLength: 12
+  pKeyPair:
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: "working"
+  pTargetPort:
+    Type: Number
+    Default: 9090
+
+  ## :: InfraStack Resource
+  # NOTE : If this template is attached to InfraStack, then replace the following:
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}" -> !Ref VPC
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${Subnet1}" -> !Ref Subnet1
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${Subnet2}" -> !Ref Subnet2
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${SGInstance}" -> !Ref SGInstance
+
+  VPC:
+    Type: String
+    Default: "VPC"
+  Subnet1:
+    Type: String
+    Default: "PrivateSubnet1"
+  Subnet2:
+    Type: String
+    Default: "PrivateSubnet2"
+  SGInstance:
+    Type: String
+    Default: "AppServer2SG"
+
+Mappings:
+  InstanceMap:
+    InstanceType:
+      dev: "t2.micro"
+      test: "t2.micro"
+      stage: "t2.micro"
+      prod: "t2.micro"
+  ImageMap:
+    ap-south-1:
+      dev: "ami-02bb7d8191b50f4bb"
+      test: "ami-02bb7d8191b50f4bb"
+      stage: "ami-02bb7d8191b50f4bb"
+      prod: "ami-02bb7d8191b50f4bb"
+
+Resources:
+  IamInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - Fn::ImportValue: !Sub "${StackExportPrefix}-IAMRole-InstanceCodeDeployRole"
+
+  InstanceAZ1:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - IamInstanceProfile
+    Properties:
+      IamInstanceProfile: !Ref IamInstanceProfile
+      ImageId: !FindInMap
+        - ImageMap
+        - !Ref "AWS::Region"
+        - !Ref pEnvironment
+      InstanceType: !FindInMap
+        - InstanceMap
+        - "InstanceType"
+        - !Ref pEnvironment
+      KeyName: !Ref pKeyPair
+      NetworkInterfaces:
+        - DeleteOnTermination: true
+          AssociatePublicIpAddress: false
+          DeviceIndex: "0"
+          SubnetId:
+            Fn::ImportValue: !Sub "${StackExportPrefix}-${Subnet1}"
+          GroupSet:
+            - Fn::ImportValue: !Sub "${StackExportPrefix}-SG-${SGInstance}"
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+            - |
+              #!/bin/bash -xe
+              sudo yum update -y
+              
+              sudo -s
+              sudo yum install ruby -y
+              sudo yum install wget
+              cd /tmp/
+              sudo wget https://aws-codedeploy-${AWS::Region}.s3.amazonaws.com/latest/install
+              sudo chmod +x ./install
+              sudo ./install auto
+              sudo service codedeploy-agent start
+              
+              sudo yum install -y httpd
+              sudo systemctl start httpd
+                
+              # Create virtualHost File
+              sudo bash -c 'sudo cat <<EOF > /etc/httpd/conf.d/virtualHost.conf
+              Listen ${pTargetPort}
+              <VirtualHost *:${pTargetPort}>
+                      DocumentRoot "/var/www/server"
+                      <Directory "/var/www/server">
+                          Options Indexes FollowSymLinks
+                          AllowOverride None
+                          Require all granted
+                      </Directory>
+                      ErrorLog "/var/log/httpd/example.com-error_log"
+                      CustomLog "/var/log/httpd/example.com-access_log" combined
+              </VirtualHost>
+              EOF'
+                
+              # Create an index.html file in /var/www/server/
+              mkdir /var/www/server
+              sudo bash -c 'sudo cat <<EOF > /var/www/server/index.html
+                 Welcome to our ${pResourceName} landing page!
+              EOF'
+              sudo service httpd restart
+
+            - pResourceName: !Ref pResourceName
+              pTargetPort: !Ref pTargetPort
+      Tags:
+        - Key: StackName
+          Value: !Sub "${AWS::StackName}"
+        - Key: StackExportPrefix
+          Value: !Ref StackExportPrefix
+        - Key: pEnvironment
+          Value: !Ref pEnvironment
+        - Key: Name
+          Value: !Sub "${StackExportPrefix}-${pResourceName}-EC2"
+
+  InstanceAZ2:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - IamInstanceProfile
+    Properties:
+      IamInstanceProfile: !Ref IamInstanceProfile
+      ImageId: !FindInMap
+        - ImageMap
+        - !Ref "AWS::Region"
+        - !Ref pEnvironment
+      InstanceType: !FindInMap
+        - InstanceMap
+        - "InstanceType"
+        - !Ref pEnvironment
+      KeyName: !Ref pKeyPair
+      NetworkInterfaces:
+        - DeleteOnTermination: true
+          AssociatePublicIpAddress: false
+          DeviceIndex: "0"
+          SubnetId:
+            Fn::ImportValue: !Sub "${StackExportPrefix}-${Subnet2}"
+          GroupSet:
+            - Fn::ImportValue: !Sub "${StackExportPrefix}-SG-${SGInstance}"
+      UserData:
+        Fn::Base64:
+          Fn::Sub:
+            - |
+              #!/bin/bash -xe
+              sudo yum update -y
+              
+              sudo -s
+              sudo yum install ruby -y
+              sudo yum install wget
+              cd /tmp/
+              sudo wget https://aws-codedeploy-${AWS::Region}.s3.amazonaws.com/latest/install
+              sudo chmod +x ./install
+              sudo ./install auto
+              sudo service codedeploy-agent start
+              
+              sudo yum install -y httpd
+              sudo systemctl start httpd
+                
+              # Create virtualHost File
+              sudo bash -c 'sudo cat <<EOF > /etc/httpd/conf.d/virtualHost.conf
+              Listen ${pTargetPort}
+              <VirtualHost *:${pTargetPort}>
+                      DocumentRoot "/var/www/server"
+                      <Directory "/var/www/server">
+                          Options Indexes FollowSymLinks
+                          AllowOverride None
+                          Require all granted
+                      </Directory>
+                      ErrorLog "/var/log/httpd/example.com-error_log"
+                      CustomLog "/var/log/httpd/example.com-access_log" combined
+              </VirtualHost>
+              EOF'
+                
+              # Create an index.html file in /var/www/server/
+              mkdir /var/www/server
+              sudo bash -c 'sudo cat <<EOF > /var/www/server/index.html
+                 Welcome to our ${pResourceName} landing page!
+              EOF'
+              sudo service httpd restart
+
+            - pResourceName: !Ref pResourceName
+              pTargetPort: !Ref pTargetPort
+      Tags:
+        - Key: StackName
+          Value: !Sub "${AWS::StackName}"
+        - Key: StackExportPrefix
+          Value: !Ref StackExportPrefix
+        - Key: pEnvironment
+          Value: !Ref pEnvironment
+        - Key: Name
+          Value: !Sub "${StackExportPrefix}-${pResourceName}-EC2"
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    DependsOn:
+      - InstanceAZ1
+    Properties:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-TG"
+      HealthCheckIntervalSeconds: 30
+      HealthCheckPath: /
+      Protocol: HTTP
+      Port: !Ref pTargetPort
+      HealthyThresholdCount: 5
+      UnhealthyThresholdCount: 2
+      TargetType: instance
+      Matcher:
+        HttpCode: "200"
+      VpcId:
+        Fn::ImportValue: !Sub  "${StackExportPrefix}-${VPC}"
+      Targets:
+        - Id: !Ref InstanceAZ1
+          Port: !Ref pTargetPort
+        - Id: !Ref InstanceAZ2
+          Port: !Ref pTargetPort
+
+Outputs:
+  Instance:
+    Description: A reference to the Instance
+    Value: !Ref InstanceAZ1
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-Instance"
+  InstancePrivateIp:
+    Description: A reference to the Instance PrivateIp
+    Value: !GetAtt InstanceAZ1.PrivateIp
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-InstancePrivateIp"
+  TargetGroup:
+    Description: TargetGroup Reference
+    Value: !Ref TargetGroup
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-TargetGroup"

@@ -1,0 +1,51 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: A CloudFormation template for creating a Hosted Zone in Route53.
+
+
+Parameters:
+  pName:
+    Type: "String"
+    Default: "appflow"
+  pDomainName:
+    Description: A fully-qualified domain name.
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: "(?!-)[a-zA-Z0-9-.]*(?<!-)"
+    ConstraintDescription: must be a valid fully-qualified domain name.
+    Default: 'appflow.in'
+  pComment:
+    Description: An optinal comment about the hosted zone.
+    Type: String
+    MinLength: '1'
+    MaxLength: '255'
+    AllowedPattern: "[-_ a-zA-Z0-9.]*"
+    ConstraintDescription: can contain only alphanumeric characters, spaces, dashes and underscores.
+    Default: Managed by CloudFormation.
+
+
+Resources:
+  HostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: !Ref pDomainName
+      HostedZoneConfig:
+        Comment: !Ref pComment
+      HostedZoneTags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Ref pDomainName
+
+Outputs:
+  HostedZoneName:
+    Description: The fully-qualified Public domain name.
+    Value: !Ref pDomainName
+    Export:
+      Name: !Sub "${pName}-HostedZoneName"
+  HostedZoneId:
+    Description: The ID of the Public Hosted Zone.
+    Value: !Ref HostedZone
+    Export:
+      Name: !Sub "${pName}-HostedZoneId"
+

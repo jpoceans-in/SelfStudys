@@ -1,0 +1,30 @@
+[
+  {
+    "ParameterKey": "StackExportPrefix",
+    "ParameterValue": "project-dev-t2"
+  },
+  {
+    "ParameterKey": "pEnvironment",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "pResourceName",
+    "ParameterValue": "HZI"
+  },
+  {
+    "ParameterKey": "pName",
+    "ParameterValue": "appflow"
+  },
+  {
+    "ParameterKey": "pDomainName",
+    "ParameterValue": "appflow.in"
+  },
+  {
+    "ParameterKey": "pComment",
+    "ParameterValue": "Managed by CloudFormation."
+  },
+  {
+    "ParameterKey": "VPC",
+    "ParameterValue": "VPC"
+  }
+]

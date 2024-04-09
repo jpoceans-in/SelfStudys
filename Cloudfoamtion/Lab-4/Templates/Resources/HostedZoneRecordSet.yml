@@ -1,0 +1,101 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create a HostedZoneRecordSet
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Resource Identity"
+        Parameters:
+          - StackExportPrefix
+          - pEnvironment
+          - pDomainName
+      - Label:
+          default: "HostedZone Configuration"
+        Parameters:
+          - pPublicHostedZoneId
+
+Parameters:
+  StackExportPrefix:
+    Type: "String"
+    Default: "project-dev-t2"
+  pEnvironment:
+    Type: "String"
+    Default: "dev"
+  pDomainName:
+    Type: String
+    Default: "appflow.in"
+  pPublicHostedZoneId:
+    Type: String
+    Default: "Z0438595YY80OFKPEZGP"
+
+Mappings:
+  RecordSetMap:
+    SubDomainName:
+      dev: "dev"
+      test: "test"
+      stage: "stage"
+      prod: ""
+
+Conditions:
+  isProd: !Equals [ !Ref pEnvironment, "prod" ]
+
+Resources:
+  # nslookup https://dev.appflow.in
+  LBPublicRecordSet:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId: !Ref pPublicHostedZoneId
+      Name: !If [ isProd, !Ref pDomainName, !Sub "${StackExportPrefix}.${pDomainName}" ]
+      Type: "A"
+      AliasTarget:
+        DNSName:
+          Fn::ImportValue: !Sub "${StackExportPrefix}-LBPublic-DNSName"
+        HostedZoneId:
+          Fn::ImportValue: !Sub "${StackExportPrefix}-LBPublic-HostedZoneID"
+
+  # Internal curl -k https://dev.appflow.in
+  # Private HostedZone add LBPublic DNSName
+  LBPublicRecordSetInternal:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub "${StackExportPrefix}-HZI-PrivateHostedZoneId"
+      Name: !If [ isProd, !Ref pDomainName, !Sub "${StackExportPrefix}.${pDomainName}" ]
+      Type: "A"
+      AliasTarget:
+        DNSName:
+          Fn::ImportValue: !Sub "${StackExportPrefix}-LBPublic-DNSName"
+        HostedZoneId:
+          Fn::ImportValue: !Sub "${StackExportPrefix}-LBPublic-HostedZoneID"
+
+  # Internal curl -k https://dev.internal.appflow.in:8080
+  # Private HostedZone add LBPrivate DNSName
+  LBPrivateRecordSetInternal:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub "${StackExportPrefix}-HZI-PrivateHostedZoneId"
+      Name: !If [ isProd, !Ref pDomainName, !Sub "${StackExportPrefix}.internal.${pDomainName}" ]
+      Type: "A"
+      AliasTarget:
+        DNSName:
+          Fn::ImportValue: !Sub "${StackExportPrefix}-LBPrivate-DNSName"
+        HostedZoneId:
+          Fn::ImportValue: !Sub "${StackExportPrefix}-LBPrivate-HostedZoneID"
+
+
+
+  # Internal mysql -h dev.internal.rds.appflow.in -P 3306 -u MyDatabase123 -p
+  # Private HostedZone add RDS DatabaseEndpoint
+  DBInstanceRecordSetInternal:
+    Type: AWS::Route53::RecordSet
+    Properties:
+      HostedZoneId:
+        Fn::ImportValue: !Sub "${StackExportPrefix}-HZI-PrivateHostedZoneId"
+      Name: !If [ isProd, !Ref pDomainName, !Sub "${StackExportPrefix}.internal.rds.${pDomainName}" ]
+      Type: 'CNAME'
+      TTL: '300'
+      ResourceRecords:
+        - Fn::ImportValue: !Sub "${StackExportPrefix}-RDS-DatabaseEndpoint"
+

@@ -1,0 +1,150 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create a Instance > Boston-Instance
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Resource Identity"
+        Parameters:
+          - StackExportPrefix
+          - pEnvironment
+          - pResourceName
+      - Label:
+          default: "InfraStack Resource"
+        Parameters:
+          - VPC
+          - Subnet1
+      - Label:
+          default: "Instance Configuration"
+        Parameters:
+          - pKeyPair
+          - pTargetPort
+
+Parameters:
+  StackExportPrefix:
+    Type: "String"
+    Default: "project-dev-t2"
+  pEnvironment:
+    Type: "String"
+    Default: "dev"
+  pResourceName:
+    Type: String
+    Default: "Boston"
+    AllowedPattern: "[A-Za-z0-9]*"
+    MaxLength: 12
+  pKeyPair:
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: "working"
+  pTargetPort:
+    Type: Number
+    Default: 80
+
+  ## :: GitHubAccount Identity
+  pGitHubAccount:
+    Type: String
+    Default: "jpoceans-in"
+  pRepositories:
+    Type: String
+    Default: "Python-Django"
+  pGitHubToken:
+    Type: String
+    Default: "AQ5WGRGNKRCKFKTGSNAHOW3FBYTIM"
+
+  ## :: InfraStack Resource
+  # NOTE : If this template is attached to InfraStack, then replace the following:
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}" -> !Ref VPC
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${Subnet1}" -> !Ref Subnet1
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${SGInstance}" -> !Ref SGInstance
+
+  VPC:
+    Type: String
+    Default: "VPC"
+  Subnet1:
+    Type: String
+    Default: "PublicSubnet1"
+  SGInstance:
+    Type: String
+    Default: "BostonSG"
+
+Mappings:
+  InstanceMap:
+    InstanceType:
+      dev: "t2.micro"
+      test: "t2.micro"
+      stage: "t2.micro"
+      prod: "t2.micro"
+  ImageMap:
+    ap-south-1:
+      dev: "ami-02bb7d8191b50f4bb"
+      test: "ami-02bb7d8191b50f4bb"
+      stage: "ami-02bb7d8191b50f4bb"
+      prod: "ami-02bb7d8191b50f4bb"
+
+Resources:
+  IamInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - Fn::ImportValue: !Sub "${StackExportPrefix}-IAMRole-SSMIAMRole"
+        - Fn::ImportValue: !Sub "${StackExportPrefix}-IAMRole-InstanceCodeDeployRole"
+
+  Instance:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - IamInstanceProfile
+    Properties:
+      IamInstanceProfile: !Ref IamInstanceProfile
+      ImageId: !FindInMap
+        - ImageMap
+        - !Ref "AWS::Region"
+        - !Ref pEnvironment
+      InstanceType: !FindInMap
+        - InstanceMap
+        - "InstanceType"
+        - !Ref pEnvironment
+      KeyName: !Ref pKeyPair
+      NetworkInterfaces:
+        - DeleteOnTermination: true
+          AssociatePublicIpAddress: true
+          DeviceIndex: "0"
+          SubnetId:
+            Fn::ImportValue: !Sub "${StackExportPrefix}-${Subnet1}"
+          GroupSet:
+            - Fn::ImportValue: !Sub "${StackExportPrefix}-SG-${SGInstance}"
+      UserData:
+        Fn::Base64:
+          Fn::Sub: |
+            #!/bin/bash -xe
+            sudo yum update -y
+            
+            sudo -s
+            sudo yum install ruby -y
+            sudo yum install wget
+            cd /tmp/
+            sudo wget https://aws-codedeploy-${AWS::Region}.s3.amazonaws.com/latest/install
+            sudo chmod +x ./install
+            sudo ./install auto
+            sudo service codedeploy-agent start
+      Tags:
+        - Key: StackName
+          Value: !Sub "${AWS::StackName}"
+        - Key: StackExportPrefix
+          Value: !Ref StackExportPrefix
+        - Key: pEnvironment
+          Value: !Ref pEnvironment
+        - Key: Name
+          Value: !Sub "${StackExportPrefix}-${pResourceName}-EC2"
+
+
+Outputs:
+  Instance:
+    Description: A reference to the Instance
+    Value: !Ref Instance
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-Instance"
+  InstancePrivateIp:
+    Description: A reference to the Instance PrivateIp
+    Value: !GetAtt Instance.PrivateIp
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-InstancePrivateIp"

@@ -1,0 +1,93 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: A CloudFormation template for creating a Hosted Zone in Route53.
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Resource Identity"
+        Parameters:
+          - StackExportPrefix
+          - pEnvironment
+          - pResourceName
+      - Label:
+          default: "InfraStack Resource"
+        Parameters:
+          - VPC
+      - Label:
+          default: "HostedZone Configuration"
+        Parameters:
+          - pName
+          - pDomainName
+          - pComment
+Parameters:
+  StackExportPrefix:
+    Type: "String"
+    Default: "project-dev-t2"
+  pEnvironment:
+    Type: "String"
+    Default: "dev"
+  pResourceName:
+    Type: String
+    Default: "HZI"
+    AllowedPattern: "[A-Za-z]*"
+  pName:
+    Type: "String"
+    Default: "appflow"
+  pDomainName:
+    Description: A fully-qualified domain name.
+    Type: String
+    MinLength: '1'
+    MaxLength: '64'
+    AllowedPattern: "(?!-)[a-zA-Z0-9-.]*(?<!-)"
+    ConstraintDescription: must be a valid fully-qualified domain name.
+    Default: 'appflow.in'
+  pComment:
+    Description: An optinal comment about the hosted zone.
+    Type: String
+    MinLength: '1'
+    MaxLength: '255'
+    AllowedPattern: "[-_ a-zA-Z0-9.]*"
+    ConstraintDescription: can contain only alphanumeric characters, spaces, dashes and underscores.
+    Default: Managed by CloudFormation.
+
+
+  ## :: InfraStack Resource
+  # NOTE : If this template is attached to InfraStack, then replace the following:
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}" -> !Ref VPC
+
+  VPC:
+    Type: String
+    Default: "VPC"
+
+Resources:
+  PrivateHostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: !Sub "${pDomainName}"
+      HostedZoneConfig:
+        Comment: !Ref pComment
+      VPCs:
+        - VPCId:
+            Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}"
+          VPCRegion:
+            Fn::ImportValue: !Sub "${StackExportPrefix}-Region"
+      HostedZoneTags:
+        - Key: StackName
+          Value: !Ref AWS::StackName
+        - Key: Name
+          Value: !Ref pDomainName
+
+Outputs:
+  PrivateHostedZoneName:
+    Description: The fully-qualified private domain name.
+    Value: !Ref pDomainName
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-PrivateHostedZoneName"
+  PrivateHostedZoneId:
+    Description: The ID of the Private Hosted Zone.
+    Value: !Ref PrivateHostedZone
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-PrivateHostedZoneId"
+
+

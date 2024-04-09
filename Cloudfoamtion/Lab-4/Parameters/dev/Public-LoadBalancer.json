@@ -1,0 +1,38 @@
+[
+  {
+    "ParameterKey": "StackExportPrefix",
+    "ParameterValue": "project-dev-t2"
+  },
+  {
+    "ParameterKey": "pEnvironment",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "pResourceName",
+    "ParameterValue": "LBPublic"
+  },
+  {
+    "ParameterKey": "pLBType",
+    "ParameterValue": "application"
+  },
+  {
+    "ParameterKey": "pLBScheme",
+    "ParameterValue": "internet-facing"
+  },
+  {
+    "ParameterKey": "pCertificateArn",
+    "ParameterValue": "arn:aws:acm:ap-south-1:956976708961:certificate/8cc941f9-584d-4542-b129-d6d0cbd2f5dd"
+  },
+  {
+    "ParameterKey": "VPC",
+    "ParameterValue": "VPC"
+  },
+  {
+    "ParameterKey": "Subnets",
+    "ParameterValue": "PublicSubnets"
+  },
+  {
+    "ParameterKey": "SGLoadBalancer",
+    "ParameterValue": "LBPublicSG"
+  }
+]

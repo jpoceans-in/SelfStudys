@@ -1,0 +1,18 @@
+[
+  {
+    "ParameterKey": "StackExportPrefix",
+    "ParameterValue": "project-prod-t2"
+  },
+  {
+    "ParameterKey": "pEnvironment",
+    "ParameterValue": "prod"
+  },
+  {
+    "ParameterKey": "pResourceName",
+    "ParameterValue": "SG"
+  },
+  {
+    "ParameterKey": "VPC",
+    "ParameterValue": "VPC"
+  }
+]

@@ -1,0 +1,22 @@
+[
+  {
+    "ParameterKey": "StackExportPrefix",
+    "ParameterValue": "--"
+  },
+  {
+    "ParameterKey": "pEnvironment",
+    "ParameterValue": ""
+  },
+  {
+    "ParameterKey": "pDomainName",
+    "ParameterValue": "appflow.in"
+  },
+  {
+    "ParameterKey": "pPublicHostedZoneId",
+    "ParameterValue": "Z0438595YY80OFKPEZGP"
+  },
+  {
+    "ParameterKey": "pPrivateHostedZoneId",
+    "ParameterValue": "Z08428152W2KRO07WF4JV"
+  }
+]

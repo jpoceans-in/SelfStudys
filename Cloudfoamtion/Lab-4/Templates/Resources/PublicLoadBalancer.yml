@@ -1,0 +1,152 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create a PublicLoadBalancer
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Resource Identity"
+        Parameters:
+          - StackExportPrefix
+          - pEnvironment
+          - pResourceName
+      - Label:
+          default: "InfraStack Resource"
+        Parameters:
+          - VPC
+          - Subnets
+      - Label:
+          default: "LoadBalancer Configuration"
+        Parameters:
+          - pLBType
+          - pLBScheme
+          - pCertificateArn
+
+Parameters:
+  StackExportPrefix:
+    Type: "String"
+    Default: "project-dev-t2"
+  pEnvironment:
+    Type: "String"
+    Default: "dev"
+  pResourceName:
+    Type: String
+    Default: "LBPublic"
+    AllowedPattern: "[A-Za-z0-9]*"
+  ## :: LoadBalancer Configuration
+  pLBType:
+    Type: String
+    Default: "application"
+    AllowedValues: [ 'application', 'network' ]
+  pLBScheme:
+    Type: String
+    Default: "internet-facing"
+    AllowedValues: [ 'internet-facing', 'internal' ]
+  pCertificateArn:
+    Type: String
+    Default: "arn:aws:acm:ap-south-1:956976708961:certificate/8cc941f9-584d-4542-b129-d6d0cbd2f5dd"
+
+  ## :: InfraStack Resource
+  # NOTE : If this template is attached to InfraStack, then replace the following:
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}" -> !Ref VPC
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${PublicSubnets}" -> !Ref PublicSubnets
+
+  VPC:
+    Type: String
+    Default: "VPC"
+  Subnets:
+    Type: String
+    Default: "PublicSubnets"
+  SGLoadBalancer:
+    Type: String
+    Default: "LBPublicSG"
+
+Mappings:
+  RecordSetMap:
+    SubDomainName:
+      dev: "dev"
+      test: "test"
+      stage: "tage"
+      prod: ""
+
+Resources:
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-LB"
+      IpAddressType: ipv4
+      Type: !Ref pLBType
+      Scheme: !Ref pLBScheme
+      Subnets: !Split [ ",", Fn::ImportValue: !Sub "${StackExportPrefix}-${Subnets}" ]
+      SecurityGroups:
+        - Fn::ImportValue: !Sub "${StackExportPrefix}-SG-${SGLoadBalancer}"
+
+  ListenerRedirect:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    DependsOn:
+      - LoadBalancer
+    Properties:
+      LoadBalancerArn: !Ref LoadBalancer
+      Port: "80"
+      Protocol: HTTP
+      DefaultActions:
+        - Type: redirect
+          RedirectConfig:
+            Protocol: "HTTPS"
+            Port: 443
+            Host: '#{host}'
+            Path: '/#{path}'
+            Query: '#{query}'
+            StatusCode: "HTTP_301"
+
+
+  Listener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      Port: "443"
+      Protocol: HTTPS
+      SslPolicy: ELBSecurityPolicy-2016-08
+      Certificates:
+        - CertificateArn: !Ref pCertificateArn
+      LoadBalancerArn: !Ref LoadBalancer
+      DefaultActions:
+        - Type: forward
+          ForwardConfig:
+            TargetGroups:
+              - TargetGroupArn:
+                  Fn::ImportValue: !Sub "${StackExportPrefix}-WebServer-TargetGroup"
+                Weight: 10
+
+  webListenerRule:
+    Type: AWS::ElasticLoadBalancingV2::ListenerRule
+    DependsOn:
+      - Listener
+    Properties:
+      Priority: 10
+      ListenerArn: !Ref Listener
+      Conditions:
+        - Field: path-pattern
+          PathPatternConfig:
+            Values:
+              - "/*"
+      Actions:
+        - Type: forward
+          TargetGroupArn:
+            Fn::ImportValue: !Sub "${StackExportPrefix}-WebServer-TargetGroup"
+
+Outputs:
+  LoadBalancer:
+    Description: LoadBalancer Reference
+    Value: !Ref LoadBalancer
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-LoadBalancer"
+  DNSName:
+    Description: LoadBalancerDNSName Reference
+    Value: !GetAtt LoadBalancer.DNSName
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-DNSName"
+  HostedZoneID:
+    Description: "LoadBalancer HostedZoneID Reference"
+    Value: !GetAtt LoadBalancer.CanonicalHostedZoneID
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-HostedZoneID"

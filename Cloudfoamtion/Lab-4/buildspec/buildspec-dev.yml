@@ -1,0 +1,39 @@
+version: 0.2
+
+env:
+  variables:
+    AWS_ACCESS_KEY_ID: "<your-access-key-id>"
+    AWS_SECRET_ACCESS_KEY: "<your-secret-access-key>"
+    AWS_DEFAULT_REGION: "<your-default-region>"
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.8
+
+  pre_build:
+    commands: |
+        echo "Installing AWS CLI..."
+        sudo apt update -y
+        sudo apt install python3-pip -y
+        pip install --upgrade pip -y
+        pip3 install awscli
+        aws --version
+
+  build:
+    commands: |
+      echo "Building and packaging your application..."
+      aws configure set aws_access_key_id $AWS_ACCESS_KEY_ID
+      aws configure set aws_secret_access_key $AWS_SECRET_ACCESS_KEY
+      aws configure set default.region $AWS_DEFAULT_REGION
+
+  post_build:
+    commands: |
+      echo "Deploying CloudFormation stacks..."
+      cd prod
+      sudo chmod +x env_prod.sh   
+      ./env_prod.sh
+
+artifacts:
+  files:
+    - '**/*'

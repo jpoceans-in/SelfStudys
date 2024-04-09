@@ -1,0 +1,50 @@
+[
+  {
+    "ParameterKey": "pProject",
+    "ParameterValue": "project"
+  },
+  {
+    "ParameterKey": "pEnvironment",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "pResourceName",
+    "ParameterValue": "t2"
+  },
+  {
+    "ParameterKey": "pRootStackTemplateURL",
+    "ParameterValue": "https://t3infrastructure.s3.ap-south-1.amazonaws.com/CloudFormation"
+  },
+  {
+    "ParameterKey": "pDomainName",
+    "ParameterValue": "appflow.in"
+  },
+  {
+    "ParameterKey": "pCidrBlockVPC",
+    "ParameterValue":"10.0.0.0/16"
+  },
+  {
+    "ParameterKey": "pCidrBlockPublicSubnet1",
+    "ParameterValue": "10.0.11.0/24"
+  },
+  {
+    "ParameterKey": "pCidrBlockPublicSubnet2",
+    "ParameterValue":"10.0.12.0/24"
+  },
+  {
+    "ParameterKey": "pCidrBlockPrivateSubnet1",
+    "ParameterValue":"10.0.21.0/24"
+  },
+  {
+    "ParameterKey": "pCidrBlockPrivateSubnet2",
+    "ParameterValue":"10.0.22.0/24"
+  },
+  {
+    "ParameterKey": "pHostedZoneId",
+    "ParameterValue":"Z08345961MC13X8KYMPJP"
+  },
+  {
+    "ParameterKey": "pCertificateArn",
+    "ParameterValue": "arn:aws:acm:ap-south-1:215992886516:certificate/ae64704e-396c-4ae0-9060-4211aa09c6ef"
+  }
+]

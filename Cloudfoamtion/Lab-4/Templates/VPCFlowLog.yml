@@ -1,0 +1,104 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: VPCFlowLogStack
+
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Resource Identity"
+        Parameters:
+          - StackExportPrefix
+          - pEnvironment
+          - pResourceName
+      - Label:
+          default: "InfraStack Resource"
+        Parameters:
+          - VPC
+
+Parameters:
+  StackExportPrefix:
+    Type: "String"
+    Default: "project-dev-t2"
+  pEnvironment:
+    Type: "String"
+    Default: "dev"
+    MaxLength: 4
+  pResourceName:
+    Type: String
+    Default: "FlowLog"
+    AllowedPattern: "[a-z]*"
+    MaxLength: 8
+  pPermissionsBoundaryArn:
+    Description: IAM Permissions Boundary ARN (optional)
+    Type: String
+    Default: "arn:aws:iam::215992886516:policy/projectprodap-south-1PermissionsBoundary"
+
+  ## :: InfraStack Resource
+  # NOTE : If this template is attached to InfraStack, then replace the following:
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}" -> !Ref VPC
+  VPC:
+    Type: String
+    Default: "VPC"
+
+Conditions:
+  cPermissionsBoundary: !Not [ !Equals [ !Ref 'pPermissionsBoundaryArn', '' ] ]
+
+Resources:
+  VPCFlowLogRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${StackExportPrefix}-svc-flow-logs"
+      PermissionsBoundary: !If [ cPermissionsBoundary, !Ref pPermissionsBoundaryArn, !Ref 'AWS::NoValue' ]
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: vpc-flow-logs.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: root
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                  - logs:PutLogEvents
+                Resource: !Sub 'arn:aws:logs:${AWS::Region}:*:log-group:/${pProject}/VPC/flowlogs:*'
+      Path: !Sub '/${pProject}/VPC/'
+
+  VPCFlowLogRoleGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub '/${pProject}/VPC/flowlogs'
+      RetentionInDays: 1
+
+  VPCFlowLog:
+    Type: AWS::EC2::FlowLog
+    DependsOn:
+      - VPCFlowLogRoleGroup
+      - VPCFlowLogRole
+    Properties:
+      DeliverLogsPermissionArn: !GetAtt VPCFlowLogRole.Arn
+      LogGroupName: !Ref VPCFlowLogRoleGroup
+      ResourceId:
+        Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}"
+      ResourceType: VPC
+      TrafficType: ALL
+
+Outputs:
+  VPCFlowLogRole:
+    Description: "VPCFlowLogRole  Reference"
+    Value: !Ref VPCFlowLogRole
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-VPCFlowLogRole"
+  VPCFlowLog:
+    Description: "VPCFlowLog  Reference"
+    Value: !Ref VPCFlowLog
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-VPCFlowLog"
