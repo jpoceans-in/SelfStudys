@@ -1,0 +1,40 @@
+   
+[
+  {
+    "ParameterKey": "StackExportPrefix",
+    "ParameterValue": "project-dev-t2"
+  },
+  {
+    "ParameterKey": "pEnvironment",
+    "ParameterValue": "dev"
+  },
+  {
+    "ParameterKey": "pResourceName",
+    "ParameterValue": "WebInstance"
+  },
+  {
+    "ParameterKey": "pKeyPair",
+    "ParameterValue": "working"
+  },
+  {
+    "ParameterKey": "pTargetPort",
+    "ParameterValue": "80"
+  },
+  {
+    "ParameterKey": "VPC",
+    "ParameterValue": "VPC"
+  },
+  {
+    "ParameterKey": "SGInstance",
+    "ParameterValue": "WebServerSG"
+  }, 
+  {
+    "ParameterKey": "Subnet2",
+    "ParameterValue": "PublicSubnet2"
+  }, 
+  {
+    "ParameterKey": "Subnet2",
+    "ParameterValue": "PublicSubnet2"
+  } 
+
+]

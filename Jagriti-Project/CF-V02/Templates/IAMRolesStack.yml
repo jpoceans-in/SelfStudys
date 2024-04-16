@@ -1,0 +1,98 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  IAMRoles
+
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Resource Identity"
+        Parameters:
+          - StackExportPrefix
+          - pEnvironment
+          - pResourceName
+
+Parameters:
+  StackExportPrefix:
+    Type: "String"
+    Default: "project-dev-t2"
+  pEnvironment:
+    Type: "String"
+    Default: "dev"
+  pResourceName:
+    Type: String
+    Default: "IAMRole"
+    AllowedPattern: "[A-Za-z]*"
+
+Resources:
+  SSMIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${StackExportPrefix}-${pResourceName}-SSMIAMRole"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMFullAccess
+        - arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
+
+
+  WebServerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${StackExportPrefix}-${pResourceName}-WebServerRole"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMFullAccess
+        
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
+        
+  AppServerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${StackExportPrefix}-${pResourceName}-AppServerRole"
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/AmazonSSMFullAccess
+        
+        - arn:aws:iam::aws:policy/service-role/AmazonEC2RoleforSSM
+
+
+
+Outputs:
+  SSMIAMRole:
+    Description: A reference to the IAMRole
+    Value: !Ref SSMIAMRole
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-SSMIAMRole"
+
+  WebServerRole:
+    Description: A reference to the WebServerRole
+    Value: !Ref WebServerRole
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-WebServerRole"
+      
+      
+  AppServerRole:
+    Description: A reference to the AppServerRole
+    Value: !Ref WebServerRole
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-AppServerRole"
