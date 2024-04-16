@@ -1,0 +1,283 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create a WebAZ > WebSiteLA
+
+
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Resource Identity"
+        Parameters:
+          - StackExportPrefix
+          - pEnvironment
+          - pResourceName
+          - VPC
+
+Parameters:
+  StackExportPrefix:
+    Type: "String"
+    Default: "project-dev-t2"
+  pEnvironment:
+    Type: "String"
+    Default: "dev"
+  pResourceName:
+    Type: String
+    Default: "SG"
+    AllowedPattern: "[A-Za-z]*"
+
+  ## :: InfraStack Resource
+  # NOTE : If this template is attached to InfraStack, then replace the following:
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}" -> !Ref VPC
+  VPC:
+    Type: String
+    Default: "VPC"
+
+Resources:
+  BostonSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "SecurityGroup for BostonSG"
+      GroupName: !Sub "${StackExportPrefix}-${pResourceName}-BostonSG"
+      VpcId:
+        Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}"
+      SecurityGroupIngress:
+        - Description: "Allow ICMP (Ping) traffic for 0.0.0.0/0"
+          IpProtocol: 'icmp'
+          FromPort: -1
+          ToPort: -1
+          CidrIp: '0.0.0.0/0'
+        - Description: "Allow SSH traffic for 0.0.0.0/0"
+          IpProtocol: "tcp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 22
+          ToPort: 22
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: Name
+          Value: !Sub "${StackExportPrefix}-${pResourceName}-BostonSG"
+
+  LBPublicSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "SecurityGroup for LBPublicSG"
+      GroupName: !Sub "${StackExportPrefix}-${pResourceName}-LBPublicSG"
+      VpcId:
+        Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}"
+      SecurityGroupIngress:
+        - Description: "Allow ICMP (Ping) traffic for 0.0.0.0/0"
+          IpProtocol: 'icmp'
+          FromPort: -1
+          ToPort: -1
+          CidrIp: '0.0.0.0/0'
+        - Description: "Allow HTTP traffic for 0.0.0.0/0"
+          IpProtocol: "tcp"
+          CidrIp: "0.0.0.0/0"
+          FromPort: 443
+          ToPort: 443
+        - Description: "Allow HTTP traffic for 0.0.0.0/0"
+          IpProtocol: 'tcp'
+          CidrIp: '0.0.0.0/0'
+          FromPort: 80
+          ToPort: 80
+
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: Name
+          Value: !Sub "${StackExportPrefix}-${pResourceName}-LBPublicSG"
+
+
+  WebServerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "SecurityGroup for WebServerSG"
+      GroupName: !Sub "${StackExportPrefix}-${pResourceName}-WebServerSG"
+      VpcId:
+        Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}"
+      SecurityGroupIngress:
+        - Description: "Allow ICMP (Ping) traffic for 0.0.0.0/0"
+          IpProtocol: 'icmp'
+          FromPort: -1
+          ToPort: -1
+          CidrIp: '0.0.0.0/0'
+        - Description: "Allow SSH traffic for BostonSG"
+          IpProtocol: "tcp"
+          SourceSecurityGroupId: !Ref BostonSG
+          FromPort: 22
+          ToPort: 22
+
+
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: Name
+          Value: !Sub "${StackExportPrefix}-${pResourceName}-WebServerSG"
+############################################################################################
+
+  APPServerSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "SecurityGroup for AppServerSG"
+      GroupName: !Sub "${StackExportPrefix}-${pResourceName}-AppServerSG"
+      VpcId:
+        Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}"
+      SecurityGroupIngress:
+        - Description: "Allow ICMP (Ping) traffic for 0.0.0.0/0"
+          IpProtocol: 'icmp'
+          FromPort: -1
+          ToPort: -1
+          CidrIp: '0.0.0.0/0'
+        - Description: "Allow SSH traffic for BostonSG"
+          IpProtocol: "tcp"
+          SourceSecurityGroupId: !Ref BostonSG
+          FromPort: 22
+          ToPort: 22
+
+
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: Name
+          Value: !Sub "${StackExportPrefix}-${pResourceName}-AppServerSG"
+
+
+
+
+  LBPrivateSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "SecurityGroup for LBPrivateSG"
+      GroupName: !Sub "${StackExportPrefix}-${pResourceName}-LBPrivateSG"
+      VpcId:
+        Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}"
+      SecurityGroupIngress:
+        - Description: "Allow ICMP (Ping) traffic for 0.0.0.0/0"
+          IpProtocol: 'icmp'
+          FromPort: -1
+          ToPort: -1
+          CidrIp: '0.0.0.0/0'
+        - Description: "Allow 8080 Port traffic for WebServerSG"
+          IpProtocol: "tcp"
+          SourceSecurityGroupId: !Ref WebServerSG
+          FromPort: 8080
+          ToPort: 8080
+        - Description: "Allow 9090 Port traffic for WebServerSG"
+          IpProtocol: "tcp"
+          SourceSecurityGroupId: !Ref WebServerSG
+          FromPort: 9090
+          ToPort: 9090
+
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: Name
+          Value: !Sub "${StackExportPrefix}-${pResourceName}-LBPrivateSG"
+
+  AppServer1SG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "SecurityGroup for AppServer1SG"
+      GroupName: !Sub "${StackExportPrefix}-${pResourceName}-AppServer1SG"
+      VpcId:
+        Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}"
+      SecurityGroupIngress:
+        - Description: "Allow ICMP (Ping) traffic for 0.0.0.0/0"
+          IpProtocol: 'icmp'
+          FromPort: -1
+          ToPort: -1
+          CidrIp: '0.0.0.0/0'
+        - Description: "Allow SSH traffic for BostonSG"
+          IpProtocol: "tcp"
+          SourceSecurityGroupId: !Ref BostonSG
+          FromPort: 22
+          ToPort: 22
+        - Description: "Allow 9090 Port traffic for LBPrivateSG"
+          IpProtocol: "tcp"
+          SourceSecurityGroupId: !Ref LBPrivateSG
+          FromPort: 8080
+          ToPort: 8080
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: Name
+          Value: !Sub "${StackExportPrefix}-${pResourceName}-AppServer1SG"
+
+
+
+  RDatabaseSG:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: "SecurityGroup for RDatabaseSG"
+      GroupName: !Sub "${StackExportPrefix}-${pResourceName}-RDatabaseSG"
+      VpcId:
+        Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}"
+      SecurityGroupIngress:
+        - Description: "Allow ICMP (Ping) traffic for 0.0.0.0/0"
+          IpProtocol: 'icmp'
+          FromPort: -1
+          ToPort: -1
+          CidrIp: '0.0.0.0/0'
+
+        - Description: "Allow 3306 Port traffic for AppServer1SG"
+          IpProtocol: "tcp"
+          SourceSecurityGroupId: !Ref AppServer1SG
+          FromPort: 3306
+          ToPort: 3306
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: "0.0.0.0/0"
+      Tags:
+        - Key: Name
+          Value: !Sub "${StackExportPrefix}-${pResourceName}-RDatabaseSG"
+
+
+Outputs:
+  BostonSG:
+    Description: "SecurityGroup for BostonSG"
+    Value: !Ref BostonSG
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-BostonSG"
+
+  LBPublicSG:
+    Description: "SecurityGroup for LBPublicSG"
+    Value: !Ref LBPublicSG
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-LBPublicSG"
+
+  WebServerSG:
+    Description: "SecurityGroup for WebServerSG"
+    Value: !Ref WebServerSG
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-WebServerSG"
+  
+  APPServerSG:
+    Description: "SecurityGroup for APPServerSG"
+    Value: !Ref APPServerSG
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-AppServerSG"  
+      
+  LBPrivateSG:
+    Description: "SecurityGroup for LBPrivateSG"
+    Value: !Ref LBPrivateSG
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-LBPrivateSG"
+
+  AppServer1SG:
+    Description: "SecurityGroup for AppServer1SG"
+    Value: !Ref AppServer1SG
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-AppServer1SG"
+
+  RDatabaseSG:
+    Description: "SecurityGroup for RDatabaseSG"
+    Value: !Ref RDatabaseSG
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-RDatabaseSG"
