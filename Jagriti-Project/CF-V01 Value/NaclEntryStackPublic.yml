@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  INBOUND,OUTBOUND  
+  Allow ALL Network ACL RULES
+
+Parameters:
+  StackExportPrefix:
+    Type: "String"
+    Default: "project-dev-t2"
+  pEnvironment:
+    Type: "String"
+    Default: "dev"
+    MaxLength: 4
+  pSpecificCidrBlock:
+    Type: "String"
+    Default: "0.0.0.0/0"
+  pNetworkAclId:
+    Type: "String"
+    Default: "PublicNetworkAcl1"
+
+Resources:
+  ## :: INBOUND Allow ALL Network ACL RULES
+  NACLInboundAllowAllTraffic:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId:
+        Fn::ImportValue: !Sub "${StackExportPrefix}-${pNetworkAclId}"
+      RuleNumber: 101
+      Protocol: -1
+      Egress: false
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0
+
+  ## :: OUTBOUND Allow ALL Network ACL RULES
+  NACLOutboundAllowAllTraffic:
+    Type: AWS::EC2::NetworkAclEntry
+    Properties:
+      NetworkAclId:
+        Fn::ImportValue: !Sub "${StackExportPrefix}-${pNetworkAclId}"
+      RuleNumber: 101
+      Protocol: -1
+      Egress: true
+      RuleAction: allow
+      CidrBlock: 0.0.0.0/0

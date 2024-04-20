@@ -1,0 +1,189 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create a Instance > Boston-Instance
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Resource Identity"
+        Parameters:
+          - StackExportPrefix
+          - pEnvironment
+          - pResourceName
+      - Label:
+          default: "InfraStack Resource"
+        Parameters:
+          - VPC
+          - Subnet1
+          - Subnet2
+      - Label:
+          default: "Instance Configuration"
+        Parameters:
+          - pKeyPair
+          - pTargetPort
+
+Parameters:
+  StackExportPrefix:
+    Type: "String"
+    Default: "project-dev-t2"
+  pEnvironment:
+    Type: "String"
+    Default: "dev"
+  pResourceName:
+    Type: String
+    Default: "Api"
+    AllowedPattern: "[A-Za-z0-9]*"
+    MaxLength: 12
+  pKeyPair:
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: "working"
+  pTargetPort:
+    Type: Number
+    Default: 80
+
+
+
+
+  VPC:
+    Type: AWS::EC2::VPC::Id
+    Default: "VPC"
+  Subnet1:
+    Type: AWS::EC2::Subnet::Id
+   # Default: "PrivateSubnet1"
+  Subnet2:
+    Type: AWS::EC2::Subnet::Id
+    #Default: "PrivateSubnet2"
+  SGInstance:
+    Type: List<AWS::EC2::SecurityGroup::Id>
+   # Default: "AppServerSG"
+  AppServerRole:
+    Type: "String"
+    Default: ""
+
+Mappings:
+  InstanceMap:
+    InstanceType:
+      dev: "t2.micro"
+      test: "t2.micro"
+      stage: "t2.micro"
+      prod: "t2.micro"
+  ImageMap:
+    us-east-1:
+      dev: "ami-051f8a213df8bc089"
+
+
+Resources:
+  IamInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles: [!Ref AppServerRole]
+
+  Instance1:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - IamInstanceProfile
+    Properties:
+      IamInstanceProfile: !Ref IamInstanceProfile
+      ImageId: !FindInMap
+        - ImageMap
+        - !Ref "AWS::Region"
+        - !Ref pEnvironment
+      InstanceType: !FindInMap
+        - InstanceMap
+        - "InstanceType"
+        - !Ref pEnvironment
+      KeyName: !Ref pKeyPair
+      NetworkInterfaces:
+        - DeleteOnTermination: true
+          AssociatePublicIpAddress: true
+          DeviceIndex: "0"
+          SubnetId: !Ref Subnet1
+          GroupSet: !Ref SGInstance
+      UserData:
+        Fn::Base64:
+          Fn::Sub: |
+            #!/bin/bash -xe
+            sudo yum update -y
+            yum update -y
+            sudo yum install python3 -y
+            sudo yum install python3-pip -y
+
+      Tags:
+        - Key: StackName
+          Value: !Sub "${AWS::StackName}"
+        - Key: StackExportPrefix
+          Value: !Ref StackExportPrefix
+        - Key: pEnvironment
+          Value: !Ref pEnvironment
+        - Key: Name
+          Value: !Sub "${StackExportPrefix}-${pResourceName}-EC2"
+          
+ ########################################################################################################################################
+ 
+          
+  Instance2:
+    Type: AWS::EC2::Instance
+    DependsOn:
+      - IamInstanceProfile
+    Properties:
+      IamInstanceProfile: !Ref IamInstanceProfile
+      ImageId: !FindInMap
+        - ImageMap
+        - !Ref "AWS::Region"
+        - !Ref pEnvironment
+      InstanceType: !FindInMap
+        - InstanceMap
+        - "InstanceType"
+        - !Ref pEnvironment
+      KeyName: !Ref pKeyPair
+      NetworkInterfaces:
+        - DeleteOnTermination: true
+          AssociatePublicIpAddress: true
+          DeviceIndex: "0"
+          SubnetId: !Ref Subnet1
+          GroupSet: !Ref SGInstance
+      UserData:
+        Fn::Base64:
+          Fn::Sub: |
+            #!/bin/bash -xe
+            sudo yum update -y
+            yum update -y
+            sudo yum install python3 -y
+            sudo yum install python3-pip -y
+
+      Tags:
+        - Key: StackName
+          Value: !Sub "${AWS::StackName}"
+        - Key: StackExportPrefix
+          Value: !Ref StackExportPrefix
+        - Key: pEnvironment
+          Value: !Ref pEnvironment
+        - Key: Name
+          Value: !Sub "${StackExportPrefix}-${pResourceName}-EC2"
+
+ 
+############################################################################################
+
+Outputs:
+  Instance1:
+    Description: A reference to the Instance
+    Value: !Ref Instance1
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-AppInstance1"
+  Instance2:
+    Description: A reference to the Instance
+    Value: !Ref Instance2
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-AppInstance2"
+
+  Instance1PrivateIp:
+    Description: A reference to the Instance PrivateIp
+    Value: !GetAtt Instance1.PrivateIp
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-Instance1PrivateIp"
+      
+  Instance2PrivateIp:
+    Description: A reference to the Instance PrivateIp
+    Value: !GetAtt Instance2.PrivateIp
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-Instance2PrivateIp"
