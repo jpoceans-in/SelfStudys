@@ -1,0 +1,259 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create a LaunchTemplate > Web-LaunchTemplate_TG_AS
+
+
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Resource Identity"
+        Parameters:
+          - StackExportPrefix
+          - pEnvironment
+          - pResourceName
+      - Label:
+          default: "InfraStack Resource"
+        Parameters:
+          - VPC
+          - Subnets
+      - Label:
+          default: "Launch Configuration"
+        Parameters:
+          - pKeyPair
+          - pTargetPort
+
+
+Parameters:
+  StackExportPrefix:
+    Type: "String"
+    Default: "project-dev-t2"
+  pEnvironment:
+    Type: "String"
+    Default: "dev"
+  pResourceName:
+    Type: String
+    Default: "WebServer"
+    AllowedPattern: "[A-Za-z0-9]*"
+  pKeyPair:
+    Type: AWS::EC2::KeyPair::KeyName
+    Default: "working"
+  pTargetPort:
+    Type: String
+    Default: "80"
+
+  ## :: InfraStack Resource
+  # NOTE : If this template is attached to InfraStack, then replace the following:
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}" -> !Ref VPC
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${PublicSubnets}" -> !Ref Subnets
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${SGInstance}" -> !Ref SGInstance
+
+  VPC:
+    Type: String
+    Default: "VPC"
+  Subnets:
+    Type: String
+    Default: "PublicSubnets"
+  SGInstance:
+    Type: String
+    Default: "WebServerSG"
+
+
+
+Mappings:
+  ## :: AutoScaling Configuration
+  AutoScalingMap:
+    MinSize:
+      dev: 1
+      test: 1
+      stage: 1
+      prod: 2
+    MaxSize:
+      dev: 1
+      test: 1
+      stage: 1
+      prod: 2
+    DesiredCapacity:
+      dev: 1
+      test: 1
+      stage: 1
+      prod: 2
+  InstanceMap:
+    InstanceType:
+      dev: "t2.micro"
+      test: "t2.micro"
+      stage: "t2.micro"
+      prod: "t2.micro"
+  ImageMap:
+    us-east-1:
+      dev: "ami-051f8a213df8bc089"
+      test: "ami-051f8a213df8bc089"
+      stage: "ami-051f8a213df8bc089"
+      prod: "ami-051f8a213df8bc089"
+
+
+Resources:
+  IamInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - Fn::ImportValue: !Sub "${StackExportPrefix}-IAMRole-SSMIAMRole"
+
+  LaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    DependsOn:
+      - IamInstanceProfile
+    Properties:
+      LaunchTemplateName: !Sub "${StackExportPrefix}-${pResourceName}-LT"
+      LaunchTemplateData:
+        IamInstanceProfile:
+          Arn: !GetAtt IamInstanceProfile.Arn
+        ImageId:
+          Fn::FindInMap:
+            - ImageMap
+            - !Ref "AWS::Region"
+            - !Ref pEnvironment
+        InstanceType:
+          Fn::FindInMap:
+            - InstanceMap
+            - "InstanceType"
+            - !Ref pEnvironment
+        KeyName: !Ref pKeyPair
+        NetworkInterfaces:
+          - DeleteOnTermination: true
+            AssociatePublicIpAddress: true
+            DeviceIndex: "0"
+            Groups:
+              - Fn::ImportValue: !Sub "${StackExportPrefix}-SG-${SGInstance}"
+        UserData:
+          Fn::Base64:
+            Fn::Sub:
+              - |
+                #!/bin/bash -xe
+                sudo yum update -y
+                
+                sudo -s
+                sudo yum install ruby -y
+                sudo yum install wget
+                cd /tmp/
+                sudo wget https://aws-codedeploy-${AWS::Region}.s3.amazonaws.com/latest/install
+                sudo chmod +x ./install
+                sudo ./install auto
+                sudo service codedeploy-agent start
+
+
+                sudo yum install -y httpd
+                sudo systemctl start httpd
+                
+                # Create virtualHost File
+                sudo bash -c 'sudo cat <<EOF > /etc/httpd/conf.d/virtualHost.conf
+                <VirtualHost *:${pTargetPort}>
+                    DocumentRoot "/var/www/server"
+                    <Directory "/var/www/server">
+                        Options Indexes FollowSymLinks
+                        AllowOverride None
+                        Require all granted
+                    </Directory>
+                    ErrorLog "/var/log/httpd/example.com-error_log"
+                    CustomLog "/var/log/httpd/example.com-access_log" combined
+                  </VirtualHost>
+                EOF'
+  
+                # Create an index.html file in /var/www/server/
+                mkdir /var/www/server
+                sudo bash -c 'sudo cat <<EOF > /var/www/server/index.html
+                  Welcome to our ${pResourceName} landing page!
+                EOF'
+                sudo service httpd restart
+
+              - pResourceName: !Ref pResourceName
+                pTargetPort: !Ref pTargetPort
+
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: StackName
+                Value: !Sub "${AWS::StackName}"
+              - Key: StackExportPrefix
+                Value: !Ref StackExportPrefix
+              - Key: pEnvironment
+                Value: !Ref pEnvironment
+              - Key: Name
+                Value: !Sub "${StackExportPrefix}-${pResourceName}-EC2"
+
+
+  TargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-TG"
+      VpcId:
+        Fn::ImportValue: !Sub  "${StackExportPrefix}-${VPC}"
+      TargetType: instance
+      Matcher:
+        HttpCode: "200"
+      HealthCheckPath: /
+      Protocol: HTTP
+      Port: !Ref pTargetPort
+      HealthyThresholdCount: 5
+      UnhealthyThresholdCount: 2
+      HealthCheckIntervalSeconds: 30
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    DependsOn:
+      - TargetGroup
+      - LaunchTemplate
+    Properties:
+      AutoScalingGroupName: !Sub "${StackExportPrefix}-${pResourceName}-AG"
+      MinSize:
+        Fn::FindInMap:
+          - AutoScalingMap
+          - "MinSize"
+          - !Ref pEnvironment
+      MaxSize:
+        Fn::FindInMap:
+          - AutoScalingMap
+          - "MaxSize"
+          - !Ref pEnvironment
+      DesiredCapacity:
+        Fn::FindInMap:
+          - AutoScalingMap
+          - "DesiredCapacity"
+          - !Ref pEnvironment
+      Cooldown: 300
+      HealthCheckType: EC2
+      HealthCheckGracePeriod: 60
+      TargetGroupARNs:
+        - !Ref TargetGroup
+      LaunchTemplate:
+        LaunchTemplateId: !Ref LaunchTemplate
+        Version: !GetAtt LaunchTemplate.LatestVersionNumber
+      VPCZoneIdentifier: !Split [ ",", Fn::ImportValue: !Sub  "${StackExportPrefix}-${Subnets}" ]
+
+
+Outputs:
+  pTargetPort:
+    Description: A reference to the pTargetPort
+    Value: !Ref pTargetPort
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-pTargetPort"
+  SGInstance:
+    Description: A reference to the Instance SecurityGroup
+    Value: !Ref SGInstance
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-SGInstance"
+  LaunchTemplate:
+    Description: A reference to the instance created in LaunchTemplate.
+    Value: !Ref LaunchTemplate
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-LaunchTemplate"
+  TargetGroup:
+    Description: TargetGroup Reference
+    Value: !Ref TargetGroup
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-TargetGroup"
+  AutoScalingGroup:
+    Description: A reference to the instance created in AutoScalingGroup.
+    Value: !Ref AutoScalingGroup
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-AutoScalingGroup"

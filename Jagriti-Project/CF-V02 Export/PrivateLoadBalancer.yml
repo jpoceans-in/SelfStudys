@@ -1,0 +1,109 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Create a PrivateLoadBalancer
+
+Metadata:
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+      - Label:
+          default: "Resource Identity"
+        Parameters:
+          - StackExportPrefix
+          - pEnvironment
+          - pResourceName
+      - Label:
+          default: "InfraStack Resource"
+        Parameters:
+          - VPC
+          - Subnets
+      - Label:
+          default: "LoadBalancer Configuration"
+        Parameters:
+          - pLBType
+          - pLBScheme
+
+Parameters:
+  StackExportPrefix:
+    Type: "String"
+    Default: "project-dev-t2"
+  pEnvironment:
+    Type: "String"
+    Default: "dev"
+  pResourceName:
+    Type: String
+    Default: "LBPrivate"
+    AllowedPattern: "[A-Za-z0-9]*"
+  ## :: LoadBalancer Configuration
+  pLBType:
+    Type: String
+    Default: "application"
+    AllowedValues: [ 'application', 'network' ]
+  pLBScheme:
+    Type: String
+    Default: "internal"
+    AllowedValues: [ 'internet-facing', 'internal' ]
+  pCertificateArn:
+    Type: String
+    Default: "arn:aws:acm:ap-south-1:956976708961:certificate/8cc941f9-584d-4542-b129-d6d0cbd2f5dd"
+
+  ## :: InfraStack Resource
+  # NOTE : If this template is attached to InfraStack, then replace the following:
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${VPC}" -> !Ref VPC
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${PublicSubnets}" -> !Ref Subnets
+  # Fn::ImportValue: !Sub "${StackExportPrefix}-${SGLoadBalancer}" -> !Ref SGLoadBalancer
+
+  VPC:
+    Type: String
+    Default: "VPC"
+  Subnets:
+    Type: String
+    Default: "PrivateSubnets"
+  SGLoadBalancer:
+    Type: String
+    Default: "LBPrivateSG"
+
+Resources:
+  LoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-LB"
+      IpAddressType: ipv4
+      Type: !Ref pLBType
+      Scheme: !Ref pLBScheme
+      Subnets: !Split [ ",", Fn::ImportValue: !Sub "${StackExportPrefix}-${Subnets}" ]
+      SecurityGroups:
+        - Fn::ImportValue: !Sub "${StackExportPrefix}-SG-${SGLoadBalancer}"
+
+  Listener8080:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      Port: "8080"
+      Protocol: HTTPS
+      SslPolicy: ELBSecurityPolicy-2016-08
+      Certificates:
+        - CertificateArn: !Ref pCertificateArn
+      LoadBalancerArn: !Ref LoadBalancer
+      DefaultActions:
+        - Type: forward
+          ForwardConfig:
+            TargetGroups:
+              - TargetGroupArn:
+                  Fn::ImportValue: !Sub "${StackExportPrefix}-AppServer1-TargetGroup"
+                Weight: 10
+
+
+Outputs:
+  LoadBalancer:
+    Description: LoadBalancer Reference
+    Value: !Ref LoadBalancer
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-LoadBalancer"
+  DNSName:
+    Description: LoadBalancerDNSName Reference
+    Value: !GetAtt LoadBalancer.DNSName
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-DNSName"
+  HostedZoneID:
+    Description: "LoadBalancer HostedZoneID Reference"
+    Value: !GetAtt LoadBalancer.CanonicalHostedZoneID
+    Export:
+      Name: !Sub "${StackExportPrefix}-${pResourceName}-HostedZoneID"
